@@ -1,0 +1,28 @@
+<!DOCTYPE html> <!-- 声明文档类型为 HTML -->
+<html> <!-- HTML 文档的根元素 -->
+<head> <!-- 包含文档的元数据 -->
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="focus-styles.css"> <!-- 引入外部 CSS 样式表 -->
+</head>
+<body> <!-- 包含文档可见内容的主体部分 -->
+    <div class="background-container"> <!-- 创建背景容器 -->
+        <div class="background-image"></div> <!-- 添加背景图像 -->
+        <div class="corner-image corner-middle-top"></div> <!-- 添加中间顶部图像 -->
+        <div class="corner-image corner-middle-bottom"></div> <!-- 添加中间底部图像 -->
+        <div class="corner-image corner-top-left"></div> <!-- 添加左上角图像 -->
+        <div class="corner-image corner-top-right"></div> <!-- 添加右上角图像 -->
+        <div class="corner-image corner-bottom-left"></div> <!-- 添加左下角图像 -->
+        <div class="corner-image corner-bottom-right"></div> <!-- 添加右下角图像 -->
+    </div>
+    <div class="container" id="mainContainer"> <!-- 创建主容器 -->
+        <div class="corner-block"></div> <!-- 添加角落区块 -->
+        <div class="row-header-container" id="rowHeaderContainer"></div> <!-- 行标题容器 -->
+        <div class="col-header-container" id="colHeaderContainer"></div> <!-- 列标题容器 -->
+        <div class="grid-container" id="gridContainer"></div> <!-- 网格容器 -->
+        <div class="focus-tree" id="focusTree"></div> <!-- 确保 id 唯一 -->
+    </div>
+    <script src="focus.js"></script><!-- 引入外部 JavaScript 文件 -->
+    <script src="focus-main.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,732 @@
+class InfiniteGrid {
+    constructor() {
+        // 初始化键盘控制相关属性
+        this.ctrlKeyPress = {};
+        // 初始化网格的单元格宽度和高度
+        this.cellWidth = 97;
+        this.cellHeight = 131;
+        // 初始化缩放比例、偏移量、拖拽状态、最后的位置等属性
+        this.scale = 1;
+        this.offset = { x: 0, y: 0 };
+        this.isDragging = false;
+        this.lastPos = { x: 0, y: 0 };
+        // 存储已渲染的单元格和选中的单元格的集合
+        this.renderedCells = new Set();
+        this.selectedCells = new Set();
+        // 多选状态、选择的起始和结束位置
+        this.isMultiSelecting = false;
+        this.selectStart = null;
+        this.selectEnd = null;
+
+        // 获取 DOM 元素的引用
+        this.container = document.getElementById('mainContainer');
+        this.gridContainer = document.getElementById('gridContainer');
+        this.focusTree = document.getElementById('focusTree');
+        this.focusManager = null;
+        this.rowHeaderContainer = document.getElementById('rowHeaderContainer');
+        this.colHeaderContainer = document.getElementById('colHeaderContainer');
+
+
+
+        // 设置缩放比例的最小值和最大值
+        this.minScale = 0.5; // 最小缩放比例
+        this.maxScale = 3;   // 最大缩放比例
+
+        // 初始化鼠标位置为空
+        this.lastMousePosition = { x: null, y: null };
+
+        // 键盘移动相关属性
+        this.keyStates = {}; // 用于记录按键状态
+        this.keyMoveSpeed = 1;
+        this.keyMoveDirection = { x: 0, y: 0 };
+        this.keyPressStartTime = null; // 记录按键按下的时间
+        this.longPressTimer = null;    // 长按定时器
+        this.isLongPress = false;      // 是否长按的标志
+
+        // 调用方法来初始化事件监听、侧边栏事件和鼠标悬停事件，并更新视图
+        this.initEvents();
+        this.initMouseOverEvents();
+        this.initKeyboardEvents(); // 添加键盘事件监听
+        this.updateView();
+    }
+    
+    // 初始化键盘事件监听
+    initKeyboardEvents() {
+        // 定义一个箭头函数来处理键盘事件，这样 'this' 就会指向当前的类实例
+        const handleKeyDown = (event) => {
+            // 检查是否有选中的单元格
+            if (this.isMultiSelecting) return;
+            if (this.isDragging) return;
+
+            // 检查是否为 Ctrl 键相关的操作
+            if (event.ctrlKey) {
+                this.ctrlKeyPress[event.key] = true;
+
+                if (event.key === 'c') {
+                    event.preventDefault(); // 阻止浏览器默认的复制行为
+                    alert('Ctrl+C is pressed');
+                    if (this.selectedCells.size === 0) return; // 检查是否有选中的单元格
+                    // 在这里添加复制操作的逻辑
+                } else if (event.key === 'v') {
+                    event.preventDefault(); // 阻止浏览器默认的粘贴行为
+                    alert('Ctrl+V is pressed');
+                    // 在这里添加粘贴操作的逻辑
+                } else if (event.key === 'x') {
+                    event.preventDefault();
+                    alert('Ctrl+X is pressed');
+                    // 在这里添加剪切操作的逻辑
+                } else if (event.key === 'f') {
+                    event.preventDefault();
+                    alert('Ctrl+F is pressed');
+                    if (this.selectedCells.size > 0) {
+                        // 调用FocusManager创建focus
+                        if (this.focusManager) {
+                            this.focusManager.createFocusAtSelectedCells();
+                        }
+                    }
+                // 在这里添加新建操作的逻辑
+                }
+            }
+
+            // 检查是否为方向键或页面控制键
+            const isDirectionKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key);
+            if (isDirectionKey && this.selectedCells.size > 0 && !this.isMultiSelecting) {
+                // 记录按键状态
+                this.keyStates[event.key] = true;
+
+                // 防止重复触发，只处理首次按下
+                if (!event.repeat) {
+                    this.updateKeyMoveDirection();
+                    this.moveSelectedCells();
+
+                    // 记录按键按下的时间
+                    this.keyPressStartTime = Date.now();
+
+                    // 设置一个长按检测定时器
+                    this.longPressTimer = setTimeout(() => {
+                        this.isLongPress = true;
+                    }, 500); // 500毫秒为长按阈值
+                }
+
+                event.preventDefault(); // 阻止方向键的默认行为（如滚动页面）
+            }
+        };
+
+        const handleKeyUp = (event) => {
+            // 检查是否为方向键或页面控制键
+            const isDirectionKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key);
+            if (isDirectionKey) {
+                // 清除按键状态
+                delete this.keyStates[event.key];
+                this.updateKeyMoveDirection();
+
+                // 如果是长按，清除定时器
+                if (this.isLongPress) {
+                    this.isLongPress = false;
+                    clearTimeout(this.longPressTimer);
+                }
+            }
+        };
+
+        // 注册键盘事件监听器
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+
+        // 定时移动选区
+        this.keyMoveInterval = setInterval(() => {
+            if (this.keyMoveDirection.x !== 0 || this.keyMoveDirection.y !== 0) {
+                if (this.isLongPress) {
+                    this.moveSelectedCells();
+                }
+            }
+        }, 100);
+    }
+
+    // 更新按键移动方向
+    updateKeyMoveDirection() {
+        let newX = 0;
+        let newY = 0;
+
+        if (this.keyStates['ArrowUp']) newY -= 1;
+        if (this.keyStates['ArrowDown']) newY += 1;
+        if (this.keyStates['ArrowLeft']) newX -= 1;
+        if (this.keyStates['ArrowRight']) newX += 1;
+        if (this.keyStates['PageUp']) newY -= 1;
+        if (this.keyStates['PageDown']) newY += 1;
+        if (this.keyStates['Home']) newX -= 1;
+        if (this.keyStates['End']) newX += 1;
+
+        // 优先级规则：方向键 > 页面控制键
+        if (this.keyStates['ArrowUp'] || this.keyStates['ArrowDown'] || 
+            this.keyStates['ArrowLeft'] || this.keyStates['ArrowRight']) {
+            if (this.keyStates['PageUp'] || this.keyStates['PageDown'] || 
+                this.keyStates['Home'] || this.keyStates['End']) {
+                // 如果同时按下方向键和页面控制键，只处理方向键
+                newY = 0;
+                newX = 0;
+                if (this.keyStates['ArrowUp']) newY -= 1;
+                if (this.keyStates['ArrowDown']) newY += 1;
+                if (this.keyStates['ArrowLeft']) newX -= 1;
+                if (this.keyStates['ArrowRight']) newX += 1;
+            }
+        } else {
+            // 只有页面控制键按下
+            if (this.keyStates['PageUp']) {
+                newY -= 1;
+            } else if (this.keyStates['PageDown']) {
+                newY += 1;
+            }
+            if (this.keyStates['Home']) {
+                newX -= 1;
+            } else if (this.keyStates['End']) {
+                newX += 1;
+            }
+        }
+
+        // 处理同时按多个按键的冲突
+        if (this.keyStates['ArrowUp'] && this.keyStates['ArrowDown']) {
+            newY = 0;
+        }
+        if (this.keyStates['ArrowLeft'] && this.keyStates['ArrowRight']) {
+            newX = 0;
+        }
+        if (this.keyStates['PageUp'] && this.keyStates['PageDown']) {
+            newY = 0;
+        }
+        if (this.keyStates['Home'] && this.keyStates['End']) {
+            newX = 0;
+        }
+
+        this.keyMoveDirection = { x: newX, y: newY };
+    }
+
+    // 移动选中的单元格
+    moveSelectedCells() {
+        const deltaX = this.keyMoveDirection.x;
+        const deltaY = this.keyMoveDirection.y;
+
+        // 创建一个临时的 Set 存储新的选中状态
+        const newSelectedCells = new Set();
+
+        // 如果选中有多个单元格
+        if (this.selectedCells.size > 1) {
+            // 获取选中区域的边界
+            const selectedBounds = {
+                minX: Math.min(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[0]))),
+                maxX: Math.max(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[0]))),
+                minY: Math.min(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[1]))),
+                maxY: Math.max(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[1])))
+            };
+
+            // 检查是否会导致负坐标
+            const newMinX = selectedBounds.minX + deltaX;
+            const newMinY = selectedBounds.minY + deltaY;
+
+            // 如果新位置会导致选框越界，则不移动
+            if (newMinX < 0 || newMinY < 0) {
+                return;
+            }
+
+            // 重新计算新的选区边界
+            const newMaxX = selectedBounds.maxX + deltaX;
+            const newMaxY = selectedBounds.maxY + deltaY;
+
+            // 填充新的选中区域
+            for (let x = newMinX; x <= newMaxX; x++) {
+                for (let y = newMinY; y <= newMaxY; y++) {
+                    newSelectedCells.add(this.createCellKey(x, y));
+                    this.updateCellOpacity({ clientX: this.lastMousePosition.x, clientY: this.lastMousePosition.y });
+                }
+            }
+        } else {
+            // 如果只有一个单元格或未进行多选
+            let currentX, currentY;
+            if (this.selectedCells.size === 1) {
+                const selectedKey = Array.from(this.selectedCells)[0];
+                currentX = parseInt(selectedKey.split('_')[0]);
+                currentY = parseInt(selectedKey.split('_')[1]);
+            } else {
+                // 获取当前选中区域的中心点
+                const selectedBounds = {
+                    minX: Math.min(this.selectStart.x, this.selectEnd.x),
+                    maxX: Math.max(this.selectStart.x, this.selectEnd.x),
+                    minY: Math.min(this.selectStart.y, this.selectEnd.y),
+                    maxY: Math.max(this.selectStart.y, this.selectEnd.y)
+                };
+                currentX = Math.round((selectedBounds.minX + selectedBounds.maxX) / 2);
+                currentY = Math.round((selectedBounds.minY + selectedBounds.maxY) / 2);
+            }
+
+            // 检查是否会导致负坐标
+            const newX = currentX + deltaX;
+            const newY = currentY + deltaY;
+
+            // 如果新位置会导致选框越界，则不移动
+            if (newX < 0 || newY < 0) {
+                return;
+            }
+
+
+            // 更新选中区域
+            this.selectStart = { x: newX, y: newY };
+            this.selectEnd = { x: newX, y: newY };
+
+            // 填充新的选中单元格
+            newSelectedCells.add(this.createCellKey(this.selectStart.x, this.selectStart.y));
+            this.updateCellOpacity({ clientX: this.lastMousePosition.x, clientY: this.lastMousePosition.y });
+        }
+
+        // 清除旧的选中状态并应用新的选中状态
+        this.selectedCells = newSelectedCells;
+        this.updateCellSelection();
+
+        // 检查是否需要滚动视图以保持选中区域可见
+        this.checkScrollBounds();
+        this.updateView();
+    }
+
+    // 检查并调整视图滚动，以确保选中区域可见
+    checkScrollBounds() {
+        if(this.isDragging == true){
+            return;
+        }
+        // 获取选中单元格的边界
+        const selectedBounds = {
+            minX: Math.min(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[0]))),
+            maxX: Math.max(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[0]))),
+            minY: Math.min(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[1]))),
+            maxY: Math.max(...Array.from(this.selectedCells).map(key => parseInt(key.split('_')[1])))
+        };
+
+        // 计算选中区域的像素位置
+        const selectedRect = {
+            left: selectedBounds.minX * this.cellWidth * this.scale + this.offset.x,
+            right: (selectedBounds.maxX + 3) * this.cellWidth * this.scale + this.offset.x,
+            top: selectedBounds.minY * this.cellHeight * this.scale + this.offset.y,
+            bottom: (selectedBounds.maxY + 2) * this.cellHeight * this.scale + this.offset.y
+        };
+
+        // 获取视图边界（考虑侧边栏）
+        const viewRect = {
+            left: 0,
+            right: this.container.clientWidth,
+            top: 0,
+            bottom: this.container.clientHeight
+        };
+
+        // 计算需要滚动的偏移量
+        let scrollX = 0;
+        let scrollY = 0;
+
+        if (selectedRect.left < 0) {
+            scrollX = selectedRect.left;
+        } else if (selectedRect.right > viewRect.right) {
+            scrollX = selectedRect.right - viewRect.right;
+        }
+
+        if (selectedRect.top < 0) {
+            scrollY = selectedRect.top;
+        } else if (selectedRect.bottom > viewRect.bottom) {
+            scrollY = selectedRect.bottom - viewRect.bottom;
+        }
+
+        // 应用滚动偏移量
+        if (scrollX !== 0 || scrollY !== 0) {
+            this.offset.x -= scrollX;
+            this.offset.y -= scrollY;
+            this.applyBoundaryConstraints();
+            this.updateView();
+            this.updateCellOpacity({ clientX: this.lastMousePosition.x, clientY: this.lastMousePosition.y });
+        }
+    }
+
+    // 初始化鼠标事件监听
+    initEvents() {
+        // 监听容器的鼠标按下事件
+        this.container.addEventListener('mousedown', e => {
+            // 如果是左键按下
+            if (e.button === 0) {
+                this.isDragging = true;
+                this.lastPos = { x: e.clientX, y: e.clientY };
+            }
+            // 在鼠标按下时刷新单元格透明度和行列阴影
+            this.updateCellOpacity(e);
+            this.updateHeaderShadows(e);
+        });
+
+        // 监听文档的鼠标移动事件
+        document.addEventListener('mousemove', e => {
+            if (this.isDragging) {
+                // 计算鼠标移动的距离
+                const dx = e.clientX - this.lastPos.x;
+                const dy = e.clientY - this.lastPos.y;
+                this.lastPos = { x: e.clientX, y: e.clientY };
+                
+                // 更新偏移量
+                this.offset.x += dx;
+                this.offset.y += dy;
+                
+                // 应用边界限制并更新视图
+                this.applyBoundaryConstraints();
+                this.updateView();
+            } else if (this.isMultiSelecting) {
+                // 如果处于多选状态，更新选择结束位置并更新多选
+                const cell = this.getClickedCell(e);
+                if (cell) {
+                    this.selectEnd = { x: cell.x, y: cell.y };
+                    this.updateMultiSelect();
+                }
+            }
+            // 在鼠标移动时刷新单元格透明度和行列阴影
+            this.updateCellOpacity(e);
+            this.updateHeaderShadows(e);
+        });
+
+        // 监听文档的鼠标抬起事件
+        document.addEventListener('mouseup', e => {
+            this.isDragging = false;
+            if (e.button === 2) {
+                this.isMultiSelecting = false;
+            }
+            // 在鼠标抬起时刷新单元格透明度和行列阴影
+            this.updateCellOpacity(e);
+            this.updateHeaderShadows(e);
+        });
+
+        // 监听容器的鼠标右键按下事件
+        this.container.addEventListener('mousedown', e => {
+            if (e.button === 2) {
+                e.preventDefault();
+                // 获取点击的单元格
+                const cell = this.getClickedCell(e);
+                if (cell) {
+                    // 清除选中状态并开始多选
+                    this.selectedCells.clear();
+                    this.selectStart = this.selectEnd = { x: cell.x, y: cell.y };
+                    this.isMultiSelecting = true;
+                    this.updateMultiSelect();
+                }
+            }
+            // 在鼠标右键按下时刷新单元格透明度和行列阴影
+            this.updateCellOpacity(e);
+            this.updateHeaderShadows(e);
+        });
+
+        // 阻止容器的右键菜单显示
+        this.container.addEventListener('contextmenu', e => e.preventDefault());
+
+        // 监听容器的鼠标滚轮事件以实现缩放
+        this.container.addEventListener('wheel', e => {
+            e.preventDefault();
+            // 根据滚轮方向计算缩放比例
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            // 执行缩放操作
+            this.zoom(delta, e.clientX, e.clientY);
+        });
+    }
+
+
+
+    // 初始化鼠标悬停事件监听
+    initMouseOverEvents() {
+        // 监听容器的鼠标移动事件以更新单元格透明度和行列阴影
+        this.container.addEventListener('mousemove', (e) => {
+            this.updateCellOpacity(e);
+            this.updateHeaderShadows(e);
+        });
+    }
+
+    // 获取点击的单元格坐标
+    getClickedCell(e) {
+        const rect = this.container.getBoundingClientRect();
+        // 计算鼠标在网格中的坐标
+        const gridX = (e.clientX - rect.left - 50 - this.offset.x) / this.scale;
+        const gridY = (e.clientY - rect.top - 30 - this.offset.y) / this.scale;
+        return {
+            x: Math.floor(gridX / this.cellWidth),
+            y: Math.floor(gridY / this.cellHeight)
+        };
+    }
+
+    // 更新多选状态
+    updateMultiSelect() {
+        const minX = Math.min(this.selectStart.x, this.selectEnd.x);
+        const maxX = Math.max(this.selectStart.x, this.selectEnd.x);
+        const minY = Math.min(this.selectStart.y, this.selectEnd.y);
+        const maxY = Math.max(this.selectStart.y, this.selectEnd.y);
+
+        // 清除之前的选中状态并重新选中新的区域
+        this.selectedCells.clear();
+        for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+                this.selectedCells.add(this.createCellKey(x, y));
+            }
+        }
+        this.updateCellSelection();
+    }
+
+    // 应用边界限制，防止拖动超过可见区域
+    applyBoundaryConstraints() {
+        const containerWidth = this.container.clientWidth;
+        const containerHeight = this.container.clientHeight;
+        const visibleWidth = this.scale * this.cellWidth * 1000;
+        const visibleHeight = this.scale * this.cellHeight * 1000;
+        
+        this.offset.x = Math.min(Math.max(this.offset.x, -visibleWidth + containerWidth), 0);
+        this.offset.y = Math.min(Math.max(this.offset.y, -visibleHeight + containerHeight), 0);
+    }
+
+    // 获取当前可见区域的边界
+    get visibleBounds() {
+        const viewWidth = this.container.clientWidth;
+        const viewHeight = this.container.clientHeight;
+        const cellWidth = this.cellWidth * this.scale;
+        const cellHeight = this.cellHeight * this.scale;
+        
+        return {
+            minCol: Math.floor(-this.offset.x / cellWidth),
+            maxCol: Math.ceil((-this.offset.x + viewWidth) / cellWidth),
+            minRow: Math.floor(-this.offset.y / cellHeight),
+            maxRow: Math.ceil((-this.offset.y + viewHeight) / cellHeight)
+        };
+    }
+
+    // 创建单元格的唯一标识字符串
+    createCellKey(x, y) { return `${x}_${y}`; }
+
+    // 更新网格中的单元格
+    updateCells() {
+        const bounds = this.visibleBounds;
+        const newCells = new Set();
+        const fragment = document.createDocumentFragment();
+
+        // 遍历可见区域内的单元格
+        for (let row = bounds.minRow; row <= bounds.maxRow; row++) {
+            for (let col = bounds.minCol; col <= bounds.maxCol; col++) {
+                const key = this.createCellKey(col, row);
+                newCells.add(key);
+
+                // 如果单元格未被渲染，则创建并添加到文档片段中
+                if (!this.renderedCells.has(key)) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.style.left = `${col * this.cellWidth}px`;
+                    cell.style.top = `${row * this.cellHeight}px`;
+                    cell.style.width = `${this.cellWidth}px`;
+                    cell.style.height = `${this.cellHeight}px`;
+                    cell.dataset.x = col;
+                    cell.dataset.y = row;
+                    if (this.selectedCells.has(key)) cell.classList.add('selected');
+                    fragment.appendChild(cell);
+                }
+            }
+        }
+
+        // 移除不可见的单元格
+        this.gridContainer.querySelectorAll('.cell').forEach(cell => {
+            const key = this.createCellKey(parseInt(cell.dataset.x), parseInt(cell.dataset.y));
+            if (!newCells.has(key)) cell.remove();
+        });
+
+        // 添加新的单元格到网格容器
+        this.gridContainer.appendChild(fragment);
+        this.renderedCells = new Set(newCells);
+    }
+
+    // 更新行标题
+    updateRowHeaders() {
+        const cellHeight = this.cellHeight * this.scale;
+        const viewHeight = this.rowHeaderContainer.clientHeight;
+        const startRow = Math.floor(-this.offset.y / cellHeight);
+        const endRow = Math.ceil((-this.offset.y + viewHeight) / cellHeight);
+
+        this.rowHeaderContainer.innerHTML = '';
+        // 遍历可见区域内的行并创建行标题
+        for (let row = startRow; row <= endRow; row++) {
+            const container = document.createElement('div');
+            container.className = 'row-header-text-container';
+            container.style.top = `${row * this.cellHeight * this.scale + this.offset.y}px`;
+            container.style.height = `${this.cellHeight * this.scale}px`;
+
+            const el = document.createElement('div');
+            el.className = 'row-header-text';
+            el.textContent = row;
+            container.appendChild(el);
+            this.rowHeaderContainer.appendChild(container);
+        }
+    }
+
+    // 更新列标题
+    updateColHeaders() {
+        const cellWidth = this.cellWidth * this.scale;
+        const viewWidth = this.colHeaderContainer.clientWidth;
+        const startCol = Math.floor(-this.offset.x / cellWidth);
+        const endCol = Math.ceil((-this.offset.x + viewWidth) / cellWidth);
+    
+        this.colHeaderContainer.innerHTML = '';
+        // 遍历可见区域内的列并创建列标题
+        for (let col = startCol; col <= endCol; col++) {
+            const el = document.createElement('div');
+            el.className = 'col-header-text';
+            el.textContent = col;
+            el.style.left = `${col * this.cellWidth * this.scale + this.offset.x}px`;
+            el.style.width = `${this.cellWidth * this.scale}px`;
+            this.colHeaderContainer.appendChild(el);
+        }
+    }
+
+    // 执行缩放操作
+    zoom(scale, mouseX, mouseY) {
+        const oldScale = this.scale;
+        // 计算并限制缩放比例
+        this.scale = Math.min(Math.max(this.scale * scale, this.minScale), this.maxScale);
+
+        const rect = this.container.getBoundingClientRect();
+        // 计算缩放的参考点
+        const offsetX = (mouseX - rect.left - this.offset.x) / oldScale;
+        const offsetY = (mouseY - rect.top - this.offset.y) / oldScale;
+        
+        // 更新偏移量以保持缩放后的视图稳定
+        this.offset.x = mouseX - rect.left - offsetX * this.scale;
+        this.offset.y = mouseY - rect.top - offsetY * this.scale;
+
+        // 应用边界限制并更新视图
+        this.applyBoundaryConstraints();
+        this.updateView();
+
+        // 更新透明度和阴影效果
+        if (this.lastMousePosition.x !== null && this.lastMousePosition.y !== null) {
+            const e = {
+                clientX: this.lastMousePosition.x,
+                clientY: this.lastMousePosition.y
+            };
+            this.updateCellOpacity(e);
+            this.updateHeaderShadows(e);
+        }
+    }
+
+    // 更新选中的单元格状态
+    updateCellSelection() {
+        this.gridContainer.querySelectorAll('.cell').forEach(cell => {
+            const x = parseInt(cell.dataset.x);
+            const y = parseInt(cell.dataset.y);
+            const key = this.createCellKey(x, y);
+            const isSelected = this.selectedCells.has(key);
+            
+            // 根据选中状态更新单元格样式
+            cell.classList.toggle('selected', isSelected);
+
+            if (isSelected) {
+                cell.style.opacity = 1;
+            }
+        });
+    }
+
+    // 更新视图，包括应用变换、更新单元格和标题
+    updateView() {
+        this.gridContainer.style.transform = `translate(${this.offset.x}px, ${this.offset.y}px) scale(${this.scale})`;
+        // 通知focus.js更新视图
+        if (this.onViewUpdate) {
+            this.onViewUpdate();
+        }
+        this.updateCells();
+        this.updateRowHeaders();
+        this.updateColHeaders();
+        this.updateCellSelection();
+    }
+
+
+
+    // 更新单元格透明度，根据鼠标位置调整
+    updateCellOpacity(e) {
+        const rect = this.container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        this.lastMousePosition = { x: e.clientX, y: e.clientY };
+
+        requestAnimationFrame(() => {
+            // 根据鼠标与单元格的距离更新透明度
+            this.gridContainer.querySelectorAll('.cell').forEach(cell => {
+                if (cell.classList.contains('selected')) return;
+
+                const cellRect = cell.getBoundingClientRect();
+                const cellX = cellRect.left - rect.left;
+                const cellY = cellRect.top - rect.top;
+
+                const dx = mouseX - (cellX + cellRect.width / 2);
+                const dy = mouseY - (cellY + cellRect.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const maxDistance = 400 * this.scale;
+                const opacity = Math.max(0, 1 - distance / maxDistance);
+                cell.style.opacity = opacity;
+            });
+        });
+    }
+
+    // 更新行列标题的阴影效果，突出显示当前单元格所在的行和列
+    updateHeaderShadows(e) {
+        const rect = this.container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const cellCoordinates = this.getClickedCell(e);
+        const currentX = cellCoordinates.x;
+        const currentY = cellCoordinates.y;
+
+        // 清除所有阴影并更新当前行和列的阴影
+        this.clearAllShadows();
+
+        if (currentX !== undefined && currentY !== undefined) {
+            this.updateRowHeaderShadow(currentY);
+            this.updateColHeaderShadow(currentX);
+        }
+    }
+
+    // 清除所有行列标题的阴影
+    clearAllShadows() {
+        const rowHeaderTextContainers = this.rowHeaderContainer.querySelectorAll('.row-header-text-container');
+        rowHeaderTextContainers.forEach((container) => {
+            container.style.boxShadow = 'inset 0 0 0 2px rgba(70, 70, 70, 0.142)';
+        });
+
+        const colHeaderTexts = this.colHeaderContainer.querySelectorAll('.col-header-text');
+        colHeaderTexts.forEach((el) => {
+            el.style.boxShadow = 'inset 0 0 0 2px rgba(70, 70, 70, 0.142)';
+        });
+    }
+
+    // 更新行标题的阴影
+    updateRowHeaderShadow(currentY) {
+        const cellHeight = this.cellHeight * this.scale;
+        const viewHeight = this.rowHeaderContainer.clientHeight;
+        const startRow = Math.floor(-this.offset.y / cellHeight);
+        const endRow = Math.ceil((-this.offset.y + viewHeight) / cellHeight);
+
+        const rowHeaderTextContainers = this.rowHeaderContainer.querySelectorAll('.row-header-text-container');
+        rowHeaderTextContainers.forEach(container => {
+            const rowTextEl = container.querySelector('.row-header-text');
+            const rowNumber = parseInt(rowTextEl.textContent);
+            if (rowNumber === currentY) {
+                container.style.boxShadow = 'inset 0 0 0 2px #edc1597b';
+            }
+        });
+    }
+
+    // 更新列标题的阴影
+    updateColHeaderShadow(currentX) {
+        const colHeaderTexts = this.colHeaderContainer.querySelectorAll('.col-header-text');
+        colHeaderTexts.forEach(el => {
+            const colNumber = parseInt(el.textContent);
+            if (colNumber === currentX) {
+                el.style.boxShadow = 'inset 0 0 0 2px #edc1597b';
+            }
+        });
+    }
+}
+// 创建InfiniteGrid实例
+const infiniteGrid = new InfiniteGrid();
+
+// 延迟初始化FocusManager
+    infiniteGrid.focusManager = new FocusManager(infiniteGrid);
