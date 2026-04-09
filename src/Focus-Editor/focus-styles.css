@@ -53,9 +53,9 @@ body {
 }
 
 /* ==================== 响应式背景六块（保持正方形比例） ==================== */
-/* 定义响应式角部尺寸变量：范围 300px ~ 760px，基于视口宽度 40% 变化 */
+/* 定义响应式角部尺寸变量：范围 300px ~ 760px，基于视口宽度 15% 变化 */
 :root {
-    --corner-size: clamp(300px, 15vw, 760px);
+    --corner-size: clamp(37vh, 15vw, 49vw);
 }
 
 /* 四个角部：固定正方形，背景图按比例覆盖不拉伸 */
@@ -171,7 +171,8 @@ body {
     left: 50px;
     top: 30px;
     transform-origin: 0 0;
-    transition: transform 0.05s;
+    /* 移除 transition 以避免 Tauri WebView2 中 transform 同步卡顿 */
+    /* transition: transform 0.05s; */
     z-index: 1;
 }
 

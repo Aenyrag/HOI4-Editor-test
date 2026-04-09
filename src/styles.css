@@ -1,6 +1,91 @@
-/* ==================== 侧边栏样式 ==================== */
+/* ==================== 全局重置 ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0d1117;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ==================== 四部分布局容器 ==================== */
+.app-container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+/* ==================== 1. 最高优先级：左工作区 ==================== */
+.left-workspace {
+    width: 250px;
+    min-width: 50px;        /* 允许折叠到50px */
+    max-width: 500px;
+    height: 100vh;
+    background: #161b22;
+    border-right: 1px solid #30363d;
+    position: relative;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.left-workspace.collapsed {
+    width: 50px !important;
+    min-width: 50px;
+}
+
+/* 拖动时禁用过渡，避免性能问题和视觉冲突 */
+.left-workspace.resizing,
+.left-workspace.resizing * {
+    transition: none !important;
+}
+
+.left-workspace.collapsed .left-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 左工作区拖动条 - 放在右侧 */
+.left-resize-handle {
+    position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+    z-index: 101;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.left-resize-handle:hover,
+.left-resize-handle.resizing {
+    background: rgba(48, 54, 61, 0.8);
+}
+
+.corner-block {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 51px;
+    height: 31px;
+    background: #191f24;
+    z-index: 3;
+    border-right: 1px solid #999;
+    border-bottom: 1px solid #999;
+    box-sizing: border-box;
+}
+
 .menu-button {
-    position: fixed;
+    position: absolute;
     top: 0px;
     left: 0px;
     width: 50px;
@@ -11,7 +96,7 @@
     justify-content: center;
     align-items: center;
     cursor: pointer;
-    z-index: 100;
+    z-index: 102;
     transition: all 0.5s ease;
     user-select: none;
     -webkit-user-select: none;
@@ -34,52 +119,271 @@
     transform: rotate(90deg);
 }
 
-.corner-block {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 51px;
-    height: 31px;
-    background: #191f24;
-    z-index: 3;
-    border-right: 1px solid #999;
-    border-bottom: 1px solid #999;
-    box-sizing: border-box;
-}
-
-.sidebar {
-    position: fixed;
-    top: 0;
-    right: -250px;
-    width: 250px;
-    height: 100vh;
-    background: #202e3a;
-    z-index: 99;
-    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: -4px 0 20px rgba(0,0,0,0.3);
-    border-left: 1px solid #100a29;
-}
-
-.sidebar.show {
-    right: 0;
-}
-
-.sidebar-content {
-    padding: 20px;
+.left-content {
+    padding: 50px 15px 15px 15px;
     color: #d2d2d2;
-    user-select: none;
-    -webkit-user-select: none;
+    flex: 1;
+    overflow-y: auto;
+    transition: opacity 0.3s ease;
 }
 
-.sidebar-content h3 {
+.left-content h3 {
     color: #d2d2d2;
     margin-bottom: 10px;
-    font-size: 18px;
-    border-bottom: 1px solid #404040;
+    font-size: 16px;
+    border-bottom: 1px solid #30363d;
     padding-bottom: 10px;
 }
 
-.sidebar * {
+/* ==================== 中间区域容器 ==================== */
+.center-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    z-index: 50;
+    min-width: 0;
+}
+
+/* ==================== 4. 最次级：基础页面 ==================== */
+.base-page {
+    flex: 1;
+    position: relative;
+    background: #0d1117;
+    overflow: hidden;
+}
+
+.base-page iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #0d1117;
+}
+
+/* ==================== 2. 次级：底部工作区 ==================== */
+.bottom-workspace {
+    height: 200px;
+    min-height: 30px;       /* 允许折叠到30px */
+    max-height: 300px;
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    position: relative;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-workspace.collapsed {
+    height: 30px !important;
+}
+
+/* 拖动时禁用过渡 */
+.bottom-workspace.resizing,
+.bottom-workspace.resizing * {
+    transition: none !important;
+}
+
+.bottom-workspace.collapsed .bottom-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 底部工作区拖动条 - 放在顶部 */
+.bottom-resize-handle {
+    position: absolute;
+    top: -3px;
+    left: 0;
+    right: 0;
+    height: 6px;
+    cursor: ns-resize;
+    z-index: 81;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.bottom-resize-handle:hover,
+.bottom-resize-handle.resizing {
+    background: rgba(48, 54, 61, 0.8);
+}
+
+.bottom-content {
+    padding: 10px 15px;
+    color: #d2d2d2;
+    flex: 1;
+    overflow-y: auto;
+    transition: opacity 0.3s ease;
+}
+
+.bottom-content h3 {
+    color: #d2d2d2;
+    margin-bottom: 10px;
+    font-size: 14px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 8px;
+}
+
+/* ==================== 3. 再次级：右工作区 ==================== */
+.right-workspace {
+    width: 250px;
+    min-width: 35px;        /* 允许折叠到35px */
+    max-width: 500px;
+    height: 100vh;
+    background: #161b22;
+    border-left: 1px solid #30363d;
+    position: relative;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.right-workspace.collapsed {
+    width: 35px !important;
+    min-width: 0;
+}
+
+/* 拖动时禁用过渡 */
+.right-workspace.resizing,
+.right-workspace.resizing * {
+    transition: none !important;
+}
+
+.right-workspace.collapsed .right-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 右工作区拖动条 - 放在左侧 */
+.right-resize-handle {
+    position: absolute;
+    left: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+    z-index: 61;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.right-resize-handle:hover,
+.right-resize-handle.resizing {
+    background: rgba(48, 54, 61, 0.8);
+}
+
+.right-content {
+    padding: 15px;
+    color: #d2d2d2;
+    flex: 1;
+    overflow-y: auto;
+    transition: opacity 0.3s ease;
+}
+
+.right-content h3 {
+    color: #d2d2d2;
+    margin-bottom: 10px;
+    font-size: 16px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 10px;
+}
+
+/* ==================== 折叠/展开按钮 ==================== */
+.toggle-btn {
+    position: absolute;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    transition: all 0.2s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 110;
+    padding: 0;
+    line-height: 1;
+}
+
+.toggle-btn:hover {
+    background: #30363d;
+    color: #d2d2d2;
+}
+
+/* 左工作区折叠按钮 */
+.toggle-left {
+    top: 35px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+}
+
+/* 底部工作区折叠按钮 */
+.toggle-bottom {
+    top: 5px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+}
+
+/* 右工作区折叠按钮 */
+.toggle-right {
+    top: 10px;
+    left: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+}
+
+/* ==================== 拖动时的遮罩层，防止iframe拦截鼠标事件 ==================== */
+.resize-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    cursor: inherit;
+    background: transparent;
+}
+
+/* ==================== 用户选择禁用 ==================== */
+.left-content,
+.right-content,
+.bottom-content {
     user-select: none;
     -webkit-user-select: none;
+}
+
+/* ==================== 滚动条样式 ==================== */
+.left-content::-webkit-scrollbar,
+.right-content::-webkit-scrollbar,
+.bottom-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.left-content::-webkit-scrollbar-track,
+.right-content::-webkit-scrollbar-track,
+.bottom-content::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+
+.left-content::-webkit-scrollbar-thumb,
+.right-content::-webkit-scrollbar-thumb,
+.bottom-content::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+
+.left-content::-webkit-scrollbar-thumb:hover,
+.right-content::-webkit-scrollbar-thumb:hover,
+.bottom-content::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
 }

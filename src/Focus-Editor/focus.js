@@ -14,6 +14,13 @@ class FocusManager {
 
     
 
+    syncFocusTreeTransform() {
+        const transform = getComputedStyle(this.mainGrid.gridContainer).transform;
+        if (transform && transform !== 'none') {
+            this.mainGrid.focusTree.style.transform = transform;
+        }
+    }
+
     initStyles() {
         Object.assign(this.mainGrid.focusTree.style, {
             position: 'absolute',
@@ -25,19 +32,25 @@ class FocusManager {
         });
 
         // 同步初始transform
-        this.mainGrid.focusTree.style.transform = 
-            getComputedStyle(this.mainGrid.gridContainer).transform;
+        this.syncFocusTreeTransform();
         
-        // 监听grid-container的transform变化
+        // 监听grid-container的transform变化，使用 RAF 节流优化性能
+        let rafId = null;
         const observer = new MutationObserver(() => {
-            this.mainGrid.focusTree.style.transform = 
-                getComputedStyle(this.mainGrid.gridContainer).transform;
+            if (rafId) return; // 如果已经安排了更新，跳过
+            rafId = requestAnimationFrame(() => {
+                this.syncFocusTreeTransform();
+                rafId = null;
+            });
         });
 
         observer.observe(this.mainGrid.gridContainer, {
             attributes: true,
             attributeFilter: ['style']
         });
+        
+        // 保存 observer 引用以便后续清理
+        this._transformObserver = observer;
     }
 
     createFocusAtSelectedCells() {

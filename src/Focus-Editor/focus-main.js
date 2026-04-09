@@ -645,23 +645,33 @@ class InfiniteGrid {
 
         this.lastMousePosition = { x: e.clientX, y: e.clientY };
 
-        requestAnimationFrame(() => {
-            // 根据鼠标与单元格的距离更新透明度
-            this.gridContainer.querySelectorAll('.cell').forEach(cell => {
-                if (cell.classList.contains('selected')) return;
+        // 使用 RAF 节流，避免在 Tauri WebView2 中过度渲染
+        if (this._opacityRafId) {
+            cancelAnimationFrame(this._opacityRafId);
+        }
+
+        this._opacityRafId = requestAnimationFrame(() => {
+            this._opacityRafId = null;
+            const cells = this.gridContainer.querySelectorAll('.cell');
+            const maxDistance = 400 * this.scale;
+            const cellWidth = this.cellWidth * this.scale;
+            const cellHeight = this.cellHeight * this.scale;
+            
+            // 批量获取 DOM 信息，减少重排
+            for (const cell of cells) {
+                if (cell.classList.contains('selected')) continue;
 
                 const cellRect = cell.getBoundingClientRect();
-                const cellX = cellRect.left - rect.left;
-                const cellY = cellRect.top - rect.top;
+                const cellX = cellRect.left - rect.left + cellRect.width / 2;
+                const cellY = cellRect.top - rect.top + cellRect.height / 2;
 
-                const dx = mouseX - (cellX + cellRect.width / 2);
-                const dy = mouseY - (cellY + cellRect.height / 2);
+                const dx = mouseX - cellX;
+                const dy = mouseY - cellY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                const maxDistance = 400 * this.scale;
-                const opacity = Math.max(0, 1 - distance / maxDistance);
+                const opacity = Math.max(0.1, 1 - distance / maxDistance);
                 cell.style.opacity = opacity;
-            });
+            }
         });
     }
 
