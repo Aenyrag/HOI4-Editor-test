@@ -65,8 +65,8 @@ class Main {
             <h3>📁 文件资源管理器(示例)</h3>
             <div class="file-tree" style="margin-top: 10px;">
                 <div class="tree-item" style="padding: 4px 0; cursor: pointer;">📁 common</div>
-                <div class="tree-item" style="padding: 4px 0; padding-left: 15px; cursor: pointer;">📄 focuses</div>
-                <div class="tree-item" style="padding: 4px 0; padding-left: 15px; cursor: pointer;">📄 events</div>
+                <div class="tree-item" style="padding: 4px 0 4px 15px;cursor: pointer;">📄 focuses</div>
+                <div class="tree-item" style="padding: 4px 0 4px 15px;cursor: pointer;">📄 events</div>
                 <div class="tree-item" style="padding: 4px 0; cursor: pointer;">📁 history</div>
                 <div class="tree-item" style="padding: 4px 0; cursor: pointer;">📁 map</div>
             </div>

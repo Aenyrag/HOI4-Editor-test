@@ -71,6 +71,7 @@ class Workpage_manager {
         this.elements.basePage = document.getElementById('basePage');
         this.elements.baseFrame = document.getElementById('baseFrame');
         this.elements.menuButton = document.getElementById('menuButton');
+        this.elements.cornerBlock = document.getElementById('corner-block');
     }
 
     // 初始化折叠按钮
@@ -188,8 +189,6 @@ class Workpage_manager {
                 : element.querySelector('.bottom-resize-handle');
         if (handle) handle.classList.add('resizing');
 
-        // 创建遮罩层防止iframe拦截鼠标事件
-        this.createOverlay();
 
         console.log(`WorkpageManager: 开始调整 ${type} 大小，起点: ${this.resizeState.startSize}px`);
     }
@@ -435,10 +434,9 @@ class Workpage_manager {
         document.addEventListener('mousemove', (e) => this.handleResize(e));
         document.addEventListener('mouseup', () => this.endResize());
 
-        // 菜单按钮点击
+        // 菜单按钮点击 - 由 menu-control.js 处理，这里只触发事件
         if (this.elements.menuButton) {
             this.elements.menuButton.addEventListener('click', () => {
-                this.elements.menuButton.classList.toggle('active');
                 this.handleMenuClick();
             });
         }

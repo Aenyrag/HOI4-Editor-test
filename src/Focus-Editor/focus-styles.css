@@ -1,5 +1,5 @@
 
-/* ==================== 全局基础样式 ==================== */
+/* ==================== 国策编辑基础样式 ==================== */
 body {
     margin: 0;
     padding: 0;
@@ -199,6 +199,7 @@ body {
     width: 97px;
     height: 131px;
     border: 1px solid #99999976;
+    opacity: 0.1;
     box-sizing: border-box;
     background: transparent;
     user-select: none;

@@ -49,7 +49,7 @@ class InfiniteGrid {
         this.initKeyboardEvents(); // 添加键盘事件监听
         this.updateView();
     }
-    
+
     // 初始化键盘事件监听
     initKeyboardEvents() {
         // 定义一个箭头函数来处理键盘事件，这样 'this' 就会指向当前的类实例
@@ -668,9 +668,9 @@ class InfiniteGrid {
                 const dx = mouseX - cellX;
                 const dy = mouseY - cellY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                const opacity = Math.max(0.1, 1 - distance / maxDistance);
-                cell.style.opacity = opacity;
+
+                cell.style.opacity = Math.max(0.1, 1 - distance / maxDistance);
+
             }
         });
     }
