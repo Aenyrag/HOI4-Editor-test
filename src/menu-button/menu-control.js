@@ -63,10 +63,10 @@ class MenuControl {
             }
         });
 
-        // 键盘支持：按 Esc 关闭菜单
+        // 键盘支持：按 Esc 切换菜单展开/折叠
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isOpen) {
-                this.close();
+            if (e.key === 'Escape') {
+                this.toggle();
             }
         });
 
@@ -135,15 +135,21 @@ class MenuControl {
         // 根据 action 执行相应操作（预留功能）
         switch (action) {
             case 'new-project':
-                // TODO: 新建项目
-                console.log('MenuControl: 新建项目（功能待实现）');
+                if (window.projectManagerWindow) {
+                    window.projectManagerWindow.show('new-project');
+                } else {
+                    console.error('MenuControl: projectManagerWindow 未初始化');
+                }
                 break;
             case 'open-project':
-                // TODO: 打开项目
-                console.log('MenuControl: 打开项目（功能待实现）');
+                if (window.projectManagerWindow) {
+                    window.projectManagerWindow.show('open-project');
+                } else {
+                    console.error('MenuControl: projectManagerWindow 未初始化');
+                }
                 break;
             case 'recent-projects':
-                // TODO: 最近的项目
+                // TODO: 最近的项目（功能待实现）
                 console.log('MenuControl: 最近的项目（功能待实现）');
                 break;
             case 'close-project':

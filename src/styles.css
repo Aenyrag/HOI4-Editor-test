@@ -346,6 +346,19 @@ html, body {
 }
 
 
+/* ==================== 拖拽遮罩层 ==================== */
+.resize-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 /* ==================== 用户选择禁用 ==================== */
 .left-content,
 .right-content,

@@ -393,6 +393,12 @@ class InfiniteGrid {
             this.updateHeaderShadows(e);
         });
 
+        // 监听鼠标离开窗口事件，确保拖拽状态能正确重置
+        document.addEventListener('mouseleave', () => {
+            this.isDragging = false;
+            this.isMultiSelecting = false;
+        });
+
         // 监听容器的鼠标右键按下事件
         this.container.addEventListener('mousedown', e => {
             if (e.button === 2) {
@@ -739,4 +745,12 @@ class InfiniteGrid {
 const infiniteGrid = new InfiniteGrid();
 
 // 延迟初始化FocusManager
-    infiniteGrid.focusManager = new FocusManager(infiniteGrid);
+infiniteGrid.focusManager = new FocusManager(infiniteGrid);
+
+// 页面加载完成后，自动聚焦到主容器以便接收键盘事件
+window.addEventListener('DOMContentLoaded', () => {
+    const mainContainer = document.getElementById('mainContainer');
+    if (mainContainer) {
+        mainContainer.focus();
+    }
+});

@@ -190,6 +190,9 @@ class Workpage_manager {
         if (handle) handle.classList.add('resizing');
 
 
+        // 创建全屏遮罩层，防止 embed 等元素在拖拽过程中吞掉鼠标事件
+        this.createOverlay();
+
         console.log(`WorkpageManager: 开始调整 ${type} 大小，起点: ${this.resizeState.startSize}px`);
     }
 
