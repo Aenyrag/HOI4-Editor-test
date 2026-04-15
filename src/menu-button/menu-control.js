@@ -8,6 +8,8 @@ class MenuControl {
         this.menuButton = null;
         this.dropdownMenu = null;
         this.isOpen = false;
+        this.loadGamefile = false;
+        this.pendingAction = null;
 
         this.init();
     }
@@ -135,16 +137,25 @@ class MenuControl {
         // 根据 action 执行相应操作（预留功能）
         switch (action) {
             case 'new-project':
-                if (window.projectManagerWindow) {
+                if (this.loadGamefile === false && window.projectManagerWindow){
+                    window.projectManagerWindow.show('load-gamefile');
+                    this.pendingAction = 'new-project';
+                }
+                else if (this.loadGamefile === true && window.projectManagerWindow) {
                     window.projectManagerWindow.show('new-project');
-                } else {
+                }
+                else {
                     console.error('MenuControl: projectManagerWindow 未初始化');
                 }
                 break;
             case 'open-project':
-                if (window.projectManagerWindow) {
+                if (this.loadGamefile === false && window.projectManagerWindow){
+                    window.projectManagerWindow.show('load-gamefile');
+                }
+                else if (this.loadGamefile === true && window.projectManagerWindow) {
                     window.projectManagerWindow.show('open-project');
-                } else {
+                }
+                else {
                     console.error('MenuControl: projectManagerWindow 未初始化');
                 }
                 break;

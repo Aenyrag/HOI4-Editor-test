@@ -18,8 +18,14 @@ class ProjectManagerWindow {
         this.currentMode = null;
         this.isVisible = false;
 
+
         // 模式配置映射
         this.modeConfig = {
+            'load-gamefile': {
+                title: '您未设置游戏文件目录',
+                actionText: '指定目录',
+                placeholder: '请指定钢铁雄心4根目录'
+            },
             'new-project': {
                 title: '新建项目',
                 actionText: '创建',
@@ -195,7 +201,7 @@ class ProjectManagerWindow {
 
     /**
      * 显示窗口
-     * @param {string} mode - 操作模式：'new-project' | 'open-project' | 'close-project' | 'recent-projects'
+     * @param {string} mode - 操作模式：'new-project-data' | 'open-project-data' | 'close-project-data' | 'recent-projects'
      * @param {string} [initialPath=''] - 初始路径
      */
     show(mode, initialPath = '') {
